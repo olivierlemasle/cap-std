@@ -26,6 +26,7 @@ use {
 /// absolute paths don't interoperate well with the capability model.
 ///
 /// [functions in `async_std::fs`]: https://docs.rs/async-std/latest/async_std/fs/index.html#functions
+#[derive(Clone)]
 pub struct Dir {
     cap_std: crate::fs::Dir,
 }
@@ -56,9 +57,9 @@ impl Dir {
     /// This corresponds to [`async_std::fs::File::open`], but only accesses paths
     /// relative to `self`.
     #[inline]
-    pub fn open<P: AsRef<str>>(&self, path: P) -> io::Result<File> {
+    pub async fn open<P: AsRef<str>>(&self, path: P) -> io::Result<File> {
         let path = from_utf8(path)?;
-        self.cap_std.open(path).map(File::from_cap_std)
+        self.cap_std.open(path).await.map(File::from_cap_std)
     }
 
     /// Opens a file at `path` with the options specified by `self`.
@@ -68,24 +69,31 @@ impl Dir {
     /// Instead of being a method on `OpenOptions`, this is a method on `Dir`,
     /// and it only accesses paths relative to `self`.
     #[inline]
-    pub fn open_with<P: AsRef<str>>(&self, path: P, options: &OpenOptions) -> io::Result<File> {
+    pub async fn open_with<P: AsRef<str>>(
+        &self,
+        path: P,
+        options: &OpenOptions,
+    ) -> io::Result<File> {
         let path = from_utf8(path)?;
         self.cap_std
             .open_with(path, options)
+            .await
             .map(File::from_cap_std)
     }
 
     /// Attempts to open a directory.
     #[inline]
-    pub fn open_dir<P: AsRef<str>>(&self, path: P) -> io::Result<Self> {
+    pub async fn open_dir<P: AsRef<str>>(&self, path: P) -> io::Result<Self> {
         let path = from_utf8(path)?;
-        self.cap_std.open_dir(path).map(Self::from_cap_std)
+        self.cap_std.open_dir(path).await.map(Self::from_cap_std)
     }
 
     /// Creates a new, empty directory at the provided path.
     ///
     /// This corresponds to [`async_std::fs::create_dir`], but only accesses paths
     /// relative to `self`.
+    ///
+    /// TODO: async; fix this when we fix https://github.com/bytecodealliance/cap-std/issues/51
     #[inline]
     pub fn create_dir<P: AsRef<str>>(&self, path: P) -> io::Result<()> {
         let path = from_utf8(path)?;
@@ -96,6 +104,8 @@ impl Dir {
     ///
     /// This corresponds to [`async_std::fs::create_dir_all`], but only accesses paths
     /// relative to `self`.
+    ///
+    /// TODO: async; fix this when we fix https://github.com/bytecodealliance/cap-std/issues/51
     #[inline]
     pub fn create_dir_all<P: AsRef<str>>(&self, path: P) -> io::Result<()> {
         let path = from_utf8(path)?;
@@ -105,6 +115,8 @@ impl Dir {
     /// Creates the specified directory with the options configured in this builder.
     ///
     /// This corresponds to [`async_std::fs::DirBuilder::create`].
+    ///
+    /// TODO: async; fix this when we fix https://github.com/bytecodealliance/cap-std/issues/51
     #[inline]
     pub fn create_dir_with<P: AsRef<str>>(
         &self,
@@ -120,9 +132,9 @@ impl Dir {
     /// This corresponds to [`async_std::fs::File::create`], but only accesses paths
     /// relative to `self`.
     #[inline]
-    pub fn create<P: AsRef<str>>(&self, path: P) -> io::Result<File> {
+    pub async fn create<P: AsRef<str>>(&self, path: P) -> io::Result<File> {
         let path = from_utf8(path)?;
-        self.cap_std.create(path).map(File::from_cap_std)
+        self.cap_std.create(path).await.map(File::from_cap_std)
     }
 
     /// Returns the canonical form of a path with all intermediate components normalized
@@ -131,9 +143,9 @@ impl Dir {
     /// This corresponds to [`async_std::fs::canonicalize`], but instead of returning an
     /// absolute path, returns a path relative to the directory represented by `self`.
     #[inline]
-    pub fn canonicalize<P: AsRef<str>>(&self, path: P) -> io::Result<String> {
+    pub async fn canonicalize<P: AsRef<str>>(&self, path: P) -> io::Result<String> {
         let path = from_utf8(path)?;
-        self.cap_std.canonicalize(path).and_then(to_utf8)
+        self.cap_std.canonicalize(path).await.and_then(to_utf8)
     }
 
     /// Copies the contents of one file to another. This function will also copy the permission
@@ -158,7 +170,7 @@ impl Dir {
     /// This corresponds to [`async_std::fs::hard_link`], but only accesses paths
     /// relative to `self`.
     #[inline]
-    pub fn hard_link<P: AsRef<str>, Q: AsRef<str>>(
+    pub async fn hard_link<P: AsRef<str>, Q: AsRef<str>>(
         &self,
         src: P,
         dst_dir: &Self,
@@ -166,7 +178,7 @@ impl Dir {
     ) -> io::Result<()> {
         let src = from_utf8(src)?;
         let dst = from_utf8(dst)?;
-        self.cap_std.hard_link(src, &dst_dir.cap_std, dst)
+        self.cap_std.hard_link(src, &dst_dir.cap_std, dst).await
     }
 
     /// Given a path, query the file system to get information about a file, directory, etc.
@@ -174,15 +186,15 @@ impl Dir {
     /// This corresponds to [`async_std::fs::metadata`], but only accesses paths
     /// relative to `self`.
     #[inline]
-    pub fn metadata<P: AsRef<str>>(&self, path: P) -> io::Result<Metadata> {
+    pub async fn metadata<P: AsRef<str>>(&self, path: P) -> io::Result<Metadata> {
         let path = from_utf8(path)?;
-        self.cap_std.metadata(path)
+        self.cap_std.metadata(path).await
     }
 
     /// Returns an iterator over the entries within `self`.
     #[inline]
-    pub fn entries(&self) -> io::Result<ReadDir> {
-        self.cap_std.entries().map(ReadDir::from_cap_std)
+    pub async fn entries(&self) -> io::Result<ReadDir> {
+        self.cap_std.entries().await.map(ReadDir::from_cap_std)
     }
 
     /// Returns an iterator over the entries within a directory.
@@ -190,9 +202,9 @@ impl Dir {
     /// This corresponds to [`async_std::fs::read_dir`], but only accesses paths
     /// relative to `self`.
     #[inline]
-    pub fn read_dir<P: AsRef<str>>(&self, path: P) -> io::Result<ReadDir> {
+    pub async fn read_dir<P: AsRef<str>>(&self, path: P) -> io::Result<ReadDir> {
         let path = from_utf8(path)?;
-        self.cap_std.read_dir(path).map(ReadDir::from_cap_std)
+        self.cap_std.read_dir(path).await.map(ReadDir::from_cap_std)
     }
 
     /// Read the entire contents of a file into a bytes vector.
@@ -210,9 +222,9 @@ impl Dir {
     /// This corresponds to [`async_std::fs::read_link`], but only accesses paths
     /// relative to `self`.
     #[inline]
-    pub fn read_link<P: AsRef<str>>(&self, path: P) -> io::Result<String> {
+    pub async fn read_link<P: AsRef<str>>(&self, path: P) -> io::Result<String> {
         let path = from_utf8(path)?;
-        self.cap_std.read_link(path).and_then(to_utf8)
+        self.cap_std.read_link(path).await.and_then(to_utf8)
     }
 
     /// Read the entire contents of a file into a string.
@@ -230,9 +242,9 @@ impl Dir {
     /// This corresponds to [`async_std::fs::remove_dir`], but only accesses paths
     /// relative to `self`.
     #[inline]
-    pub fn remove_dir<P: AsRef<str>>(&self, path: P) -> io::Result<()> {
+    pub async fn remove_dir<P: AsRef<str>>(&self, path: P) -> io::Result<()> {
         let path = from_utf8(path)?;
-        self.cap_std.remove_dir(path)
+        self.cap_std.remove_dir(path).await
     }
 
     /// Removes a directory at this path, after removing all its contents. Use carefully!
@@ -251,8 +263,8 @@ impl Dir {
     /// as much as possible, removal is not guaranteed to be atomic with respect
     /// to a concurrent rename of the directory.
     #[inline]
-    pub fn remove_open_dir(self) -> io::Result<()> {
-        self.cap_std.remove_open_dir()
+    pub async fn remove_open_dir(self) -> io::Result<()> {
+        self.cap_std.remove_open_dir().await
     }
 
     /// Removes the directory referenced by `self`, after removing all its contents, and
@@ -262,8 +274,8 @@ impl Dir {
     /// as much as possible, removal is not guaranteed to be atomic with respect
     /// to a concurrent rename of the directory.
     #[inline]
-    pub fn remove_open_dir_all(self) -> io::Result<()> {
-        self.cap_std.remove_open_dir_all()
+    pub async fn remove_open_dir_all(self) -> io::Result<()> {
+        self.cap_std.remove_open_dir_all().await
     }
 
     /// Removes a file from a filesystem.
@@ -271,9 +283,9 @@ impl Dir {
     /// This corresponds to [`async_std::fs::remove_file`], but only accesses paths
     /// relative to `self`.
     #[inline]
-    pub fn remove_file<P: AsRef<str>>(&self, path: P) -> io::Result<()> {
+    pub async fn remove_file<P: AsRef<str>>(&self, path: P) -> io::Result<()> {
         let path = from_utf8(path)?;
-        self.cap_std.remove_file(path)
+        self.cap_std.remove_file(path).await
     }
 
     /// Rename a file or directory to a new name, replacing the original file if to already exists.
@@ -281,7 +293,7 @@ impl Dir {
     /// This corresponds to [`async_std::fs::rename`], but only accesses paths
     /// relative to `self`.
     #[inline]
-    pub fn rename<P: AsRef<str>, Q: AsRef<str>>(
+    pub async fn rename<P: AsRef<str>, Q: AsRef<str>>(
         &self,
         from: P,
         to_dir: &Self,
@@ -289,7 +301,7 @@ impl Dir {
     ) -> io::Result<()> {
         let from = from_utf8(from)?;
         let to = from_utf8(to)?;
-        self.cap_std.rename(from, &to_dir.cap_std, to)
+        self.cap_std.rename(from, &to_dir.cap_std, to).await
     }
 
     /// Changes the permissions found on a file or a directory.
@@ -297,9 +309,13 @@ impl Dir {
     /// This corresponds to [`async_std::fs::set_permissions`], but only accesses paths
     /// relative to `self`. Also, on some platforms, this function may fail if the
     /// file or directory cannot be opened for reading or writing first.
-    pub fn set_permissions<P: AsRef<str>>(&self, path: P, perm: Permissions) -> io::Result<()> {
+    pub async fn set_permissions<P: AsRef<str>>(
+        &self,
+        path: P,
+        perm: Permissions,
+    ) -> io::Result<()> {
         let path = from_utf8(path)?;
-        self.cap_std.set_permissions(path, perm)
+        self.cap_std.set_permissions(path, perm).await
     }
 
     /// Query the metadata about a file without following symlinks.
@@ -307,9 +323,9 @@ impl Dir {
     /// This corresponds to [`async_std::fs::symlink_metadata`], but only accesses paths
     /// relative to `self`.
     #[inline]
-    pub fn symlink_metadata<P: AsRef<str>>(&self, path: P) -> io::Result<Metadata> {
+    pub async fn symlink_metadata<P: AsRef<str>>(&self, path: P) -> io::Result<Metadata> {
         let path = from_utf8(path)?;
-        self.cap_std.symlink_metadata(path)
+        self.cap_std.symlink_metadata(path).await
     }
 
     /// Write a slice as the entire contents of a file.
@@ -334,10 +350,10 @@ impl Dir {
     /// [`async_std::os::unix::fs::symlink`]: https://docs.rs/async-std/latest/async_std/os/unix/fs/fn.symlink.html
     #[cfg(not(windows))]
     #[inline]
-    pub fn symlink<P: AsRef<str>, Q: AsRef<str>>(&self, src: P, dst: Q) -> io::Result<()> {
+    pub async fn symlink<P: AsRef<str>, Q: AsRef<str>>(&self, src: P, dst: Q) -> io::Result<()> {
         let src = from_utf8(src)?;
         let dst = from_utf8(dst)?;
-        self.cap_std.symlink(src, dst)
+        self.cap_std.symlink(src, dst).await
     }
 
     /// Creates a new file symbolic link on a filesystem.
@@ -348,10 +364,14 @@ impl Dir {
     /// [`async_std::os::windows::fs::symlink_file`]: https://docs.rs/async-std/latest/async_std/os/windows/fs/fn.symlink_file.html
     #[cfg(windows)]
     #[inline]
-    pub fn symlink_file<P: AsRef<str>, Q: AsRef<str>>(&self, src: P, dst: Q) -> io::Result<()> {
+    pub async fn symlink_file<P: AsRef<str>, Q: AsRef<str>>(
+        &self,
+        src: P,
+        dst: Q,
+    ) -> io::Result<()> {
         let src = from_utf8(src)?;
         let dst = from_utf8(dst)?;
-        self.cap_std.symlink_file(src, dst)
+        self.cap_std.symlink_file(src, dst).await
     }
 
     /// Creates a new directory symlink on a filesystem.
@@ -362,10 +382,14 @@ impl Dir {
     /// [`async_std::os::windows::fs::symlink_dir`]: https://docs.rs/async-std/latest/async_std/os/windows/fs/fn.symlink_dir.html
     #[cfg(windows)]
     #[inline]
-    pub fn symlink_dir<P: AsRef<str>, Q: AsRef<str>>(&self, src: P, dst: Q) -> io::Result<()> {
+    pub async fn symlink_dir<P: AsRef<str>, Q: AsRef<str>>(
+        &self,
+        src: P,
+        dst: Q,
+    ) -> io::Result<()> {
         let src = from_utf8(src)?;
         let dst = from_utf8(dst)?;
-        self.cap_std.symlink_dir(src, dst)
+        self.cap_std.symlink_dir(src, dst).await
     }
 
     /// Creates a new `UnixListener` bound to the specified socket.
@@ -378,9 +402,9 @@ impl Dir {
     /// [`async_std::os::unix::net::UnixListener::bind`]: https://docs.rs/async-std/latest/async_std/os/unix/net/struct.UnixListener.html#method.bind
     #[cfg(unix)]
     #[inline]
-    pub fn bind_unix_listener<P: AsRef<str>>(&self, path: P) -> io::Result<UnixListener> {
+    pub async fn bind_unix_listener<P: AsRef<str>>(&self, path: P) -> io::Result<UnixListener> {
         let path = from_utf8(path)?;
-        self.cap_std.bind_unix_listener(path)
+        self.cap_std.bind_unix_listener(path).await
     }
 
     /// Connects to the socket named by path.
@@ -393,9 +417,9 @@ impl Dir {
     /// [`async_std::os::unix::net::UnixStream::connect`]: https://docs.rs/async-std/latest/async_std/os/unix/net/struct.UnixStream.html#method.connect
     #[cfg(unix)]
     #[inline]
-    pub fn connect_unix_stream<P: AsRef<str>>(&self, path: P) -> io::Result<UnixStream> {
+    pub async fn connect_unix_stream<P: AsRef<str>>(&self, path: P) -> io::Result<UnixStream> {
         let path = from_utf8(path)?;
-        self.cap_std.connect_unix_stream(path)
+        self.cap_std.connect_unix_stream(path).await
     }
 
     /// Creates a Unix datagram socket bound to the given path.
@@ -408,9 +432,9 @@ impl Dir {
     /// [`async_std::os::unix::net::UnixDatagram::bind`]: https://docs.rs/async-std/latest/async_std/os/unix/net/struct.UnixDatagram.html#method.bind
     #[cfg(unix)]
     #[inline]
-    pub fn bind_unix_datagram<P: AsRef<str>>(&self, path: P) -> io::Result<UnixDatagram> {
+    pub async fn bind_unix_datagram<P: AsRef<str>>(&self, path: P) -> io::Result<UnixDatagram> {
         let path = from_utf8(path)?;
-        self.cap_std.bind_unix_datagram(path)
+        self.cap_std.bind_unix_datagram(path).await
     }
 
     /// Connects the socket to the specified address.
@@ -423,13 +447,15 @@ impl Dir {
     /// [`async_std::os::unix::net::UnixDatagram::connect`]: https://docs.rs/async-std/latest/async_std/os/unix/net/struct.UnixDatagram.html#method.connect
     #[cfg(unix)]
     #[inline]
-    pub fn connect_unix_datagram<P: AsRef<str>>(
+    pub async fn connect_unix_datagram<P: AsRef<str>>(
         &self,
         unix_datagram: &UnixDatagram,
         path: P,
     ) -> io::Result<()> {
         let path = from_utf8(path)?;
-        self.cap_std.connect_unix_datagram(unix_datagram, path)
+        self.cap_std
+            .connect_unix_datagram(unix_datagram, path)
+            .await
     }
 
     /// Sends data on the socket to the specified address.
@@ -442,7 +468,7 @@ impl Dir {
     /// [`async_std::os::unix::net::UnixDatagram::send_to`]: https://docs.rs/async-std/latest/async_std/os/unix/net/struct.UnixDatagram.html#method.send_to
     #[cfg(unix)]
     #[inline]
-    pub fn send_to_unix_datagram_addr<P: AsRef<str>>(
+    pub async fn send_to_unix_datagram_addr<P: AsRef<str>>(
         &self,
         unix_datagram: &UnixDatagram,
         buf: &[u8],
@@ -451,6 +477,7 @@ impl Dir {
         let path = from_utf8(path)?;
         self.cap_std
             .send_to_unix_datagram_addr(unix_datagram, buf, path)
+            .await
     }
 
     // async_std doesn't have `try_clone`.
@@ -460,9 +487,9 @@ impl Dir {
     /// This corresponds to [`async_std::path::Path::exists`], but only
     /// accesses paths relative to `self`.
     #[inline]
-    pub fn exists<P: AsRef<str>>(&self, path: P) -> bool {
+    pub async fn exists<P: AsRef<str>>(&self, path: P) -> bool {
         match from_utf8(path) {
-            Ok(path) => self.cap_std.exists(path),
+            Ok(path) => self.cap_std.exists(path).await,
             Err(_) => false,
         }
     }
@@ -472,9 +499,9 @@ impl Dir {
     /// This corresponds to [`async_std::path::Path::is_file`], but only
     /// accesses paths relative to `self`.
     #[inline]
-    pub fn is_file<P: AsRef<str>>(&self, path: P) -> bool {
+    pub async fn is_file<P: AsRef<str>>(&self, path: P) -> bool {
         match from_utf8(path) {
-            Ok(path) => self.cap_std.is_file(path),
+            Ok(path) => self.cap_std.is_file(path).await,
             Err(_) => false,
         }
     }
@@ -486,9 +513,9 @@ impl Dir {
     /// symbolic links to query information about the destination file. In case
     /// of broken symbolic links, this will return `false`.
     #[inline]
-    pub fn is_dir<P: AsRef<str>>(&self, path: P) -> bool {
+    pub async fn is_dir<P: AsRef<str>>(&self, path: P) -> bool {
         match from_utf8(path) {
-            Ok(path) => self.cap_std.is_dir(path),
+            Ok(path) => self.cap_std.is_dir(path).await,
             Err(_) => false,
         }
     }
@@ -501,9 +528,11 @@ impl Dir {
     /// This function is not sandboxed and may access any path that the host
     /// process has access to.
     #[inline]
-    pub unsafe fn open_ambient_dir<P: AsRef<str>>(path: P) -> io::Result<Self> {
+    pub async unsafe fn open_ambient_dir<P: AsRef<str>>(path: P) -> io::Result<Self> {
         let path = from_utf8(path)?;
-        crate::fs::Dir::open_ambient_dir(path).map(Self::from_cap_std)
+        crate::fs::Dir::open_ambient_dir(path)
+            .await
+            .map(Self::from_cap_std)
     }
 }
 
