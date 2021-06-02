@@ -17,6 +17,7 @@ use std::{
     path::Path,
     sync::atomic::{AtomicBool, Ordering::Relaxed},
 };
+use io_experiment::FromFd;
 
 /// Call the `openat2` system call, or use a fallback if that's unavailable.
 pub(crate) fn open_impl(
@@ -73,6 +74,7 @@ pub(crate) fn open_beneath(
                 ResolveFlags::BENEATH | ResolveFlags::NO_MAGICLINKS,
             ) {
                 Ok(file) => {
+                    let file = fs::File::from_into_fd(file);
                     // Note that we don't bother with `ensure_cloexec` here
                     // because Linux has supported `O_CLOEXEC` since 2.6.18,
                     // and `openat2` was introduced in 5.6.

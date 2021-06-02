@@ -24,8 +24,9 @@ fs-set-times = "0.3.1"
 unsafe-io = "0.6.0"
 
 [target.'cfg(not(windows))'.dependencies]
-posish = "0.6.0"
+posish = { git = "https://github.com/bytecodealliance/posish", branch = "sunfishcode/io-experiment" }
 libc = "0.2.81"
+io-experiment = { git = "https://github.com/sunfishcode/io-experiment", branch = "main" }
 
 [target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
 once_cell = "1.4.1"

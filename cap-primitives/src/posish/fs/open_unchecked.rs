@@ -4,6 +4,7 @@ use crate::fs::ensure_cloexec;
 use crate::fs::{stat_unchecked, OpenOptions, OpenUncheckedError};
 use posish::fs::{openat, Mode};
 use std::{fs, path::Path};
+use io_experiment::FromFd;
 
 /// *Unsandboxed* function similar to `open`, but which does not perform sandboxing.
 pub(crate) fn open_unchecked(
@@ -18,6 +19,7 @@ pub(crate) fn open_unchecked(
 
     let err = match openat(start, path, oflags, mode) {
         Ok(file) => {
+            let file = fs::File::from_into_fd(file);
             #[cfg(any(target_os = "android", target_os = "linux"))]
             ensure_cloexec(&file).map_err(OpenUncheckedError::Other)?;
 
