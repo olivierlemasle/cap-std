@@ -20,6 +20,7 @@ arf-strings = { version = "0.3.0", optional = true }
 cap-primitives = { path = "../cap-primitives", version = "^0.13.11-alpha.0"}
 ipnet = "2.3.0"
 unsafe-io = "0.6.0"
+io-experiment = { git = "https://github.com/sunfishcode/io-experiment", branch = "main" }
 
 [target.'cfg(not(windows))'.dependencies]
 posish = { git = "https://github.com/bytecodealliance/posish", branch = "sunfishcode/io-experiment" }
